@@ -29,7 +29,9 @@ struct LivestreamView: View {
     @State private var uikitAlpha = CGFloat(1)
     let trayHeight: CGFloat = 300
     let handleRadius: CGFloat = 75
-    
+    private var trayCoinDiff: CGFloat {
+        return self.trayHeight - self.handleRadius
+    }
     private  var offsetCoin: CGPoint {
         if dragPhase == .selectedDonate || dragPhase == .selectedChangeValue {
             return offset
@@ -52,7 +54,7 @@ struct LivestreamView: View {
                 
                 CoinView()
                     .frame(width: self.handleRadius , height: self.handleRadius)
-                    .offset(x: self.offsetCoin.x, y: self.offsetCoin.y)
+                    .offset(x: self.offset.x, y: self.offset.y)
                  //   .animation(.easeIn(duration: 0.1))
                     .background(
                         GeometryReader{ coinGeo in
@@ -60,58 +62,71 @@ struct LivestreamView: View {
                                 .frame(width: 75, height: self.trayHeight)
                                 .onAppear(perform: {
                                     coinStartingPos = coinGeo.frame(in: .global).origin
+                                    self.offset = CGPoint(x: 0, y: self.trayCoinDiff/2)
                                 })
                         }
                 )
                     .gesture(
                         DragGesture(minimumDistance: 0, coordinateSpace: .global)
-                            .onChanged{
-                                self.choiceIndex = self.matchHoleIndex(draggingPosition:  $0.location)
-                                let yOffset = $0.translation.height
-                                self.offset = CGPoint(x: $0.translation.width, y:  yOffset)
-                                let top = -self.trayHeight + self.handleRadius
-                                if yOffset <  top{//higher than tray's top
+                            .onChanged { drag in
+                                self.choiceIndex = self.matchHoleIndex(draggingPosition:  drag.location)
+                                withAnimation(.easeIn(duration: 0.08)) {
+                                    let x = self.allowHorizontalDrag ? drag.translation.width : 0
+                                    let y =  self.currentY + drag.translation.height + self.trayCoinDiff/2
+                                    self.offset = CGPoint(x: x, y:  y)
+                                }
+                                 
+                                let top = -self.trayCoinDiff
+                                if drag.translation.height <  top{//higher than tray's top
                                     self.allowHorizontalDrag = true
                                 } 
                                 
                                 if !self.allowHorizontalDrag {
-                                    self.uikitAlpha = 1 - abs( yOffset/top)
+                                    self.uikitAlpha = 1 - abs( drag.translation.height/top)
                                 }
                         }
-                        .onEnded({
-                            if let destination = self.matchHoleIndex(draggingPosition: $0.location) {
+                        .onEnded({ drop in
+                            if let destination = self.matchHoleIndex(draggingPosition: drop.location) {
                                 let deltaW = holeFrames[destination].size.width - self.handleRadius
                                 let deltaH = holeFrames[destination].size.height - self.handleRadius
                                 withAnimation(.easeIn(duration: 0.1)) {
                                     self.offset = CGPoint(x: holeFrames[destination].origin.x - coinStartingPos.x + deltaW/2,
-                                                          y:  holeFrames[destination].origin.y - coinStartingPos.y + deltaH/2)
-                                }
-                                 
-                                withAnimation(.easeIn(duration: 0.2)) {
-                                    if destination == 0 {
-                                        self.dragPhase =  .selectedChangeValue
-                                    } else if destination == 1 {
-                                        self.dragPhase =   .selectedDonate
-                                        withAnimation(Animation.easeIn(duration: 0.2).delay(0.2)) {
-                                            self.offset = CGPoint(x: self.offset.x,  y: self.offset.y + 50)
-                                        }
-                                    }
+                                                          y: holeFrames[destination].origin.y - coinStartingPos.y + deltaH/2)
                                 }
                                 
-                            
-                                return
-                            }
-                            self.offset = .zero
-                            if $0.translation.height < -self.trayHeight/2 + self.handleRadius/2 {//center Y of tray
-                                self.currentY = -self.trayHeight + self.handleRadius // tray's top
-                                self.dragPhase = .secondPhase
-                                self.allowHorizontalDrag = true
-                            }
-                            else {
-                                self.currentY = 0 // bottom tray
-                                self.dragPhase = .firstPhase
-                                self.uikitAlpha = 1
-                                self.allowHorizontalDrag = false
+                                //  withAnimation(.easeIn(duration: 0.2)) {
+                                if destination == 0 {
+                                    self.dragPhase =  .selectedChangeValue
+                                } else if destination == 1 {
+                                    self.dragPhase =   .selectedDonate
+                                    withAnimation(Animation.easeIn(duration: 0.2).delay(0.2)) {
+                                        self.offset = CGPoint(x: self.offset.x,  y: self.offset.y + 50)
+                                    }
+                                }
+                                //}
+                            } else {
+                                //self.offset = .zero
+                                if drop.translation.height < -self.trayCoinDiff/2 {//center Y of tray
+                                    self.currentY = -self.trayHeight + self.handleRadius // tray's top
+                                    self.dragPhase = .secondPhase
+                                    self.allowHorizontalDrag = true
+                                }
+                                else {
+                                    self.currentY = 0 // bottom tray
+                                    self.dragPhase = .firstPhase
+                                    self.uikitAlpha = 1
+                                    self.allowHorizontalDrag = false
+                                }
+                                
+                                let x = self.allowHorizontalDrag ? self.offset.x : 0
+                                let y =  self.currentY + self.trayCoinDiff/2
+                                //withAnimation(Animation.interpolatingSpring(mass: 1, stiffness: 1, damping: 0.5, initialVelocity: 5))
+                                withAnimation(.easeIn(duration: 0.2)) {
+                                    self.offset = CGPoint(x: x, y: y)
+                                }
+                               
+                                  
+                                    
                             }
                         })
                 )
