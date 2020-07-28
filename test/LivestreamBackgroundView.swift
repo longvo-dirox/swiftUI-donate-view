@@ -8,6 +8,7 @@
 
 import SwiftUI
 struct BackgroundView: View {
+    let opacity: Double
     var body: some View {
         GeometryReader { geo in
             VStack (spacing: 30) {
@@ -39,7 +40,7 @@ struct BackgroundView: View {
                 .background(Color.yellow)
             }
             .foregroundColor(.white)
-            .background( Color.init(.sRGBLinear , red: 0, green: 0, blue: 0))
+            .background( Color.black.opacity(self.opacity))
             .edgesIgnoringSafeArea(.all)
         } .edgesIgnoringSafeArea(.all)
     }
@@ -47,6 +48,6 @@ struct BackgroundView: View {
 
 struct LivestreamBackgroundView_Previews: PreviewProvider {
     static var previews: some View {
-        BackgroundView()
+        BackgroundView(opacity: 1)
     }
 }

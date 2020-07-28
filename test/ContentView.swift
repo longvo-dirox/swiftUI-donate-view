@@ -13,7 +13,8 @@ import SwiftUI
 let holeRadius: CGFloat = 100
 fileprivate var holeFrames = [CGRect](repeating: .zero, count: 3)
 fileprivate var coinStartingPos = CGPoint.zero
- private var allowHorizontalDrag = false
+private var allowHorizontalDrag = false
+
 enum DragPhase {
     case firstPhase
     case secondPhase
@@ -26,55 +27,54 @@ struct LivestreamView: View {
     @State private var coinOffset = CGPoint.zero
     @State private var currentY: CGFloat = 0
     @State private var dragPhase: DragPhase = .firstPhase
-   // @State private var allowHorizontalDrag = false
+    // @State private var allowHorizontalDrag = false
     @State private var choiceIndex: Int?
-    @State private var uikitAlpha: CGFloat  = 0
+    @State private var uikitAlpha: CGFloat  = 1
     @State private var coinAngle: Double = 0
     @State private var coinWhiteHaloAngle: Double = 0
     @State private var coinHaloScale: CGFloat = 1
     @State private var showCoinWhiteHalo: Bool = false
     @State private var coinHaloOpacity: Double = 1
     @State private var finalScreenOpacity: Double = 0
+    
     let trayHeight: CGFloat = 300
-    let handleRadius: CGFloat = 75
+    let coinRadius: CGFloat = 95
     private var trayCoinDiff: CGFloat {
-        return self.trayHeight - self.handleRadius
+        return self.trayHeight - self.coinRadius
     }
     private  var offsetCoin: CGPoint {
         if dragPhase == .selectedDonate || dragPhase == .selectedChangeValue {
             return coinOffset
         } else {
             let x = allowHorizontalDrag ? self.coinOffset.x : 0
-            let y =  self.currentY + self.coinOffset.y + self.trayHeight/2 - self.handleRadius/2
+            let y =  self.currentY + self.coinOffset.y + self.trayHeight/2 - self.coinRadius/2
             return CGPoint(x: x, y: y)
         }
     }
     var body: some View {
         ZStack {
-            VCSwiftUIView(storyboard: "Storyboard", VC: "UIKitVC", alpha: uikitAlpha)
-            Group {
-                BackgroundView()
-                ChoicesView(indexHighlighted: choiceIndex, dragPhase: dragPhase)
-            }
+            VCSwiftUIView(storyboard: "Storyboard", VC: "UIKitVC", alpha: 1)
+            BackgroundView(opacity: Double(1-self.uikitAlpha)/2)
+            ChoicesView(indexHighlighted: choiceIndex, dragPhase: dragPhase)
             .opacity(Double(1-self.uikitAlpha))
-//            .blendMode(.colorBurn)
+            //            .blendMode(.colorBurn)
             
             DonateOptionsFinalScreen(opacity: finalScreenOpacity)
                 .zIndex(2)
-                
+            
             
             HStack {
                 Spacer ()
                 
                 CoinView(haloOpacity: self.coinHaloOpacity, haloScale: coinHaloScale, showWhiteHalo: showCoinWhiteHalo, whiteHaloAngle: self.coinWhiteHaloAngle)
-                    .frame(width: self.handleRadius , height: self.handleRadius)
+                    .frame(width: self.coinRadius , height: self.coinRadius)
                     .rotationEffect(.degrees(self.coinAngle))
                     .offset(x: self.coinOffset.x, y: self.coinOffset.y)
                     //   .animation(.easeIn(duration: 0.1))
                     .background(
                         GeometryReader{ coinGeo in
                             SliderTray()
-                                .frame(width: 75, height: self.trayHeight)
+                                .frame(width: self.coinRadius , height: self.trayHeight)
                                 .onAppear(perform: {
                                     coinStartingPos = coinGeo.frame(in: .global).origin
                                     self.coinOffset = CGPoint(x: 0, y: self.trayCoinDiff/2)
@@ -154,15 +154,15 @@ struct LivestreamView: View {
                                         
                                         withAnimation(Animation.easeIn(duration: 4.2).delay(1.4)) {
                                             self.coinAngle = -360
-                                            self.coinWhiteHaloAngle = 1400
+                                            self.coinWhiteHaloAngle = 1440
                                         }
                                     }
-                                   
-
+                                    
+                                    
                                 }
                             } else {//go back to tray
                                 if drop.translation.height < -self.trayCoinDiff/2 {//center Y of tray
-                                    self.currentY = -self.trayHeight + self.handleRadius // tray's TOP
+                                    self.currentY = -self.trayHeight + self.coinRadius // tray's TOP
                                     self.dragPhase = .secondPhase
                                     self.uikitAlpha = 0
                                     allowHorizontalDrag = true
@@ -180,7 +180,7 @@ struct LivestreamView: View {
                                     self.coinOffset = CGPoint(x: 0, y: y)
                                 }
                                 
-                              
+                                
                                 
                             }
                         })
@@ -193,8 +193,8 @@ struct LivestreamView: View {
     }
     
     private func offsetFromHole(_ holeIndex: Int) -> CGPoint {
-        let deltaW = holeFrames[holeIndex].size.width - self.handleRadius
-        let deltaH = holeFrames[holeIndex].size.height - self.handleRadius
+        let deltaW = holeFrames[holeIndex].size.width - self.coinRadius
+        let deltaH = holeFrames[holeIndex].size.height - self.coinRadius
         return CGPoint(x: holeFrames[holeIndex].origin.x - coinStartingPos.x + deltaW/2,
                        y: holeFrames[holeIndex].origin.y - coinStartingPos.y + deltaH/2)
     }
@@ -225,7 +225,7 @@ struct CoinView: View {
             .foregroundColor(.clear)
             .overlay(Image("coin")
                 .resizable()
-                .scaleEffect(1.2)
+                
                 .overlay(
                     Image("halo")
                         .rotationEffect(.degrees(whiteHaloAngle))
@@ -234,11 +234,11 @@ struct CoinView: View {
             )
                 .background(
                     Circle()
-                    .foregroundColor(Color.yellow.opacity(haloOpacity))
+                        .foregroundColor(Color.yellow.opacity(haloOpacity))
                         .scaleEffect(haloScale)
-                    .zIndex(1)
-            )
-        )
+                        .zIndex(1)
+                )
+        ).scaleEffect(0.9)
         
         
     }
@@ -256,36 +256,85 @@ struct SliderTray: View {
 
 
 struct ChoicesView: View {
-    let padding: CGFloat = 20
+    let padding: CGFloat = 5
     let indexHighlighted: Int?
     let dragPhase: DragPhase?
     let downSliderHeight = UIScreen.main.bounds.size.height/3.5
+    
     var body: some View {
-        GeometryReader { geo in
-            VStack (spacing: 80) {
-                HoleView(index: 0, highlighted: 0 == self.indexHighlighted, imgName: "holeBorder")
-                HoleView(index: 1, highlighted: 1 == self.indexHighlighted, imgName: self.dragPhase == .selectedDonate ? "holeBorderHighlighted" : "holeBorder")
-                    .background(
-                        Capsule()
-                            .frame(width: holeRadius + self.padding , height: self.downSliderHeight + 2*self.padding )
-                            .foregroundColor(Color.black.opacity(0.7))
-                            .offset(x: 0, y: self.downSliderHeight/2 - holeRadius/2)
-                            .overlay(
-                                HoleView(index: 2, highlighted:  false, imgName: "holeBorderHighlighted")
-                                    .offset(x: 0, y: self.downSliderHeight - holeRadius)
-                        )
-                            .opacity(self.dragPhase == .selectedDonate ? 1 : 0)
-                )
-            }
-                
-            .foregroundColor(.white)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        
+        VStack (spacing: 80) {
+            HoleView(index: 0, centerText: "2$",  highlighted: 0 == self.indexHighlighted, imgName: "holeBorder")
+                .overlay(
+                    DescriptionView {
+                        VStack(spacing: 0){
+                            Text("dslkfj ksdjfld dsflkj sdflkj ")
+                                .font(.largeTitle)
+                            Text("hello ")
+                                .font(.title)
+                            Image("downArrow")
+                        }
+                        .frame(width: UIScreen.main.bounds.size.width)
+                    }
+                    
+            )
+            
+            HoleView(index: 1, centerText: "",  highlighted: 1 == self.indexHighlighted, imgName: self.dragPhase == .selectedDonate ? "holeBorderHighlighted" : "holeBorder")
+                .overlay(
+                    DescriptionView {
+                        VStack (spacing: 0){
+                            Text("second text ")
+                                .font(.subheadline)
+                                .frame(width: UIScreen.main.bounds.size.width)
+                            Image("downArrow")
+                        }
+                        .frame(width: UIScreen.main.bounds.size.width)
+                    }
+                    
+                    
+            )
+                .background(
+                    Capsule()
+                        .frame(width: holeRadius + self.padding , height: self.downSliderHeight + self.padding )
+                        .foregroundColor(Color.black.opacity(0.8))
+                        .offset(x: 0, y: self.downSliderHeight/2 - holeRadius/2)
+                        .overlay(
+                            HoleView(index: 2, centerText: "",  highlighted:  false, imgName: "holeBorderHighlighted")
+                                .offset(x: 0, y: self.downSliderHeight - holeRadius)
+                    )
+                        .opacity(self.dragPhase == .selectedDonate ? 1 : 0)
+            )
         }
+            
+        .foregroundColor(.white)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        
+    }
+}
+
+struct DescriptionView<Content: View>: View {
+    let content: Content
+    @State private var description2Height: CGFloat = 0
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+    
+    var body: some View {
+        content
+            .overlay(
+                GeometryReader { description2 in
+                    Color(.clear).onAppear(){
+                        self.description2Height = description2.size.height
+                    }
+                    
+            })
+            .offset(x: 0, y: -holeRadius/2 - self.description2Height/2)
     }
 }
 
 struct HoleView: View {
     let index: Int
+    let centerText: String
     let highlighted: Bool
     let imgName: String
     let addedArea: CGFloat = 200
@@ -297,9 +346,10 @@ struct HoleView: View {
                 .resizable()
                 .renderingMode(.template)
                 .foregroundColor(highlighted ? .yellow : .white)
+                .overlay(Text(centerText))
         )
-          //  .shadow(color: .yellow  , radius:  highlighted ?  300 : 0 )
-//        .padding(addedArea)
+            //  .shadow(color: .yellow  , radius:  highlighted ?  300 : 0 )
+            //        .padding(addedArea)
             .overlay(
                 GeometryReader { geo in
                     Color.clear
@@ -310,7 +360,7 @@ struct HoleView: View {
             })
     }
 }
- 
+
 struct SwiftUIView_Previews: PreviewProvider {
     static var previews: some View {
         LivestreamView()
