@@ -11,7 +11,7 @@ import SwiftUI
 import SwiftUI
 
 let holeRadius: CGFloat = 100
-fileprivate var holeFrames = [CGRect](repeating: .zero, count:  2)
+fileprivate var holeFrames = [CGRect](repeating: .zero, count: 3)
 fileprivate var coinStartingPos = CGPoint.zero
 enum DragPhase {
     case firstPhase
@@ -21,12 +21,13 @@ enum DragPhase {
 }
 struct LivestreamView: View {
     @State private var showCoin = false
-    @State private var offset = CGPoint.zero
+    @State private var coinOffset = CGPoint.zero
     @State private var currentY: CGFloat = 0
     @State private var dragPhase: DragPhase = .firstPhase
     @State private var allowHorizontalDrag = false
     @State private var choiceIndex: Int?
     @State private var uikitAlpha = CGFloat(1)
+    @State private var coinAngle: Double = 0
     let trayHeight: CGFloat = 300
     let handleRadius: CGFloat = 75
     private var trayCoinDiff: CGFloat {
@@ -34,10 +35,10 @@ struct LivestreamView: View {
     }
     private  var offsetCoin: CGPoint {
         if dragPhase == .selectedDonate || dragPhase == .selectedChangeValue {
-            return offset
+            return coinOffset
         } else {
-            let x = self.allowHorizontalDrag ? self.offset.x : 0
-            let y =  self.currentY + self.offset.y + self.trayHeight/2 - self.handleRadius/2
+            let x = self.allowHorizontalDrag ? self.coinOffset.x : 0
+            let y =  self.currentY + self.coinOffset.y + self.trayHeight/2 - self.handleRadius/2
             return CGPoint(x: x, y: y)
         }
     }
@@ -54,15 +55,16 @@ struct LivestreamView: View {
                 
                 CoinView()
                     .frame(width: self.handleRadius , height: self.handleRadius)
-                    .offset(x: self.offset.x, y: self.offset.y)
-                 //   .animation(.easeIn(duration: 0.1))
+                    .rotationEffect(.degrees(self.coinAngle))
+                    .offset(x: self.coinOffset.x, y: self.coinOffset.y)
+                    //   .animation(.easeIn(duration: 0.1))
                     .background(
                         GeometryReader{ coinGeo in
                             SliderTray()
                                 .frame(width: 75, height: self.trayHeight)
                                 .onAppear(perform: {
                                     coinStartingPos = coinGeo.frame(in: .global).origin
-                                    self.offset = CGPoint(x: 0, y: self.trayCoinDiff/2)
+                                    self.coinOffset = CGPoint(x: 0, y: self.trayCoinDiff/2)
                                 })
                         }
                 )
@@ -73,9 +75,9 @@ struct LivestreamView: View {
                                 withAnimation(.easeIn(duration: 0.08)) {
                                     let x = self.allowHorizontalDrag ? drag.translation.width : 0
                                     let y =  self.currentY + drag.translation.height + self.trayCoinDiff/2
-                                    self.offset = CGPoint(x: x, y:  y)
+                                    self.coinOffset = CGPoint(x: x, y:  y)
                                 }
-                                 
+                                
                                 let top = -self.trayCoinDiff
                                 if drag.translation.height <  top{//higher than tray's top
                                     self.allowHorizontalDrag = true
@@ -86,47 +88,42 @@ struct LivestreamView: View {
                                 }
                         }
                         .onEnded({ drop in
-                            if let destination = self.matchHoleIndex(draggingPosition: drop.location) {
-                                let deltaW = holeFrames[destination].size.width - self.handleRadius
-                                let deltaH = holeFrames[destination].size.height - self.handleRadius
+                            if let holeIndex = self.matchHoleIndex(draggingPosition: drop.location) {//go to Holes
                                 withAnimation(.easeIn(duration: 0.1)) {
-                                    self.offset = CGPoint(x: holeFrames[destination].origin.x - coinStartingPos.x + deltaW/2,
-                                                          y: holeFrames[destination].origin.y - coinStartingPos.y + deltaH/2)
+                                    self.coinOffset = self.offsetFromHole(holeIndex)
                                 }
                                 
-                                //  withAnimation(.easeIn(duration: 0.2)) {
-                                if destination == 0 {
+                                if holeIndex == 0 {//go to Hole 1st
                                     self.dragPhase =  .selectedChangeValue
-                                } else if destination == 1 {
-                                    self.dragPhase =   .selectedDonate
-                                    withAnimation(Animation.easeIn(duration: 0.2).delay(0.2)) {
-                                        self.offset = CGPoint(x: self.offset.x,  y: self.offset.y + 50)
+                                } else if holeIndex == 1 {//go to Hole 2nd
+                                    self.dragPhase = .selectedDonate
+                                    withAnimation(Animation.easeIn(duration: 0.8).delay(0.2)) {//go to hole 3rd
+                                        self.coinOffset = self.offsetFromHole(2)
+                                        self.coinAngle = 180
                                     }
                                 }
-                                //}
-                            } else {
-                                //self.offset = .zero
+                            } else {//go back to tray
                                 if drop.translation.height < -self.trayCoinDiff/2 {//center Y of tray
-                                    self.currentY = -self.trayHeight + self.handleRadius // tray's top
+                                    self.currentY = -self.trayHeight + self.handleRadius // tray's TOP
                                     self.dragPhase = .secondPhase
                                     self.allowHorizontalDrag = true
                                 }
                                 else {
-                                    self.currentY = 0 // bottom tray
+                                    self.currentY = 0 // BOTTOM tray
                                     self.dragPhase = .firstPhase
                                     self.uikitAlpha = 1
                                     self.allowHorizontalDrag = false
                                 }
                                 
-                                let x = self.allowHorizontalDrag ? self.offset.x : 0
+                                let x = self.allowHorizontalDrag ? self.coinOffset.x : 0
                                 let y =  self.currentY + self.trayCoinDiff/2
                                 //withAnimation(Animation.interpolatingSpring(mass: 1, stiffness: 1, damping: 0.5, initialVelocity: 5))
                                 withAnimation(.easeIn(duration: 0.2)) {
-                                    self.offset = CGPoint(x: x, y: y)
+                                    self.coinOffset = CGPoint(x: x, y: y)
                                 }
-                               
-                                  
-                                    
+                                
+                                
+                                
                             }
                         })
                 )
@@ -137,7 +134,14 @@ struct LivestreamView: View {
         
     }
     
-    func matchHoleIndex(draggingPosition: CGPoint) -> Int?  {
+    private func offsetFromHole(_ holeIndex: Int) -> CGPoint {
+        let deltaW = holeFrames[holeIndex].size.width - self.handleRadius
+        let deltaH = holeFrames[holeIndex].size.height - self.handleRadius
+        return CGPoint(x: holeFrames[holeIndex].origin.x - coinStartingPos.x + deltaW/2,
+                       y: holeFrames[holeIndex].origin.y - coinStartingPos.y + deltaH/2)
+    }
+    
+    private func matchHoleIndex(draggingPosition: CGPoint) -> Int?  {
         //  print("\(draggingPosition)")
         for (index, frame) in holeFrames.enumerated() {
             if frame.contains(draggingPosition) {
@@ -193,7 +197,7 @@ struct ChoicesView: View {
                             .foregroundColor(Color.black.opacity(0.7))
                             .offset(x: 0, y: self.downSliderHeight/2 - holeRadius/2)
                             .overlay(
-                                HoleView(index: -1, highlighted:  false, imgName: "holeBorderHighlighted")
+                                HoleView(index: 2, highlighted:  false, imgName: "holeBorderHighlighted")
                                     .offset(x: 0, y: self.downSliderHeight - holeRadius)
                         )
                             .opacity(self.dragPhase == .selectedDonate ? 1 : 0)
@@ -219,13 +223,12 @@ struct HoleView: View {
                 .resizable()
         )
             .shadow(color: .green  , radius: highlighted ?  30 : 0)
+        .padding(40)
             .overlay(
                 GeometryReader { geo in
                     Color.clear
                         .onAppear {
-                            if  self.index >= 0 {
                                 holeFrames[self.index] = geo.frame(in: .global)
-                            }
                     }
                     
             })
