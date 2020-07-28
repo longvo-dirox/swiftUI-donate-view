@@ -21,9 +21,10 @@ struct BackgroundView: View {
                 .frame(height: geo.size.height/4)
                 
                 Spacer()
+                    .frame(maxWidth: .infinity)
                 
                 VStack( spacing: 0) {
-                    Image("flowers-nature-portrait-955782")
+                    Image("img")
                         .resizable()
                         .scaledToFill()
                         .frame(width: 300, height: 100)
@@ -38,9 +39,14 @@ struct BackgroundView: View {
                 .background(Color.yellow)
             }
             .foregroundColor(.white)
-            .background( Color.init(.sRGBLinear , red: 0, green: 0, blue: 0, opacity: 0.8))
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background( Color.init(.sRGBLinear , red: 0, green: 0, blue: 0))
             .edgesIgnoringSafeArea(.all)
         } .edgesIgnoringSafeArea(.all)
     }
 } 
+
+struct LivestreamBackgroundView_Previews: PreviewProvider {
+    static var previews: some View {
+        BackgroundView()
+    }
+}
